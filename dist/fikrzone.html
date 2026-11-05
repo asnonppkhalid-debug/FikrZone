@@ -1541,6 +1541,19 @@ function pageHead(title, sub, right) { return h('div', { class: 'ph' }, h('div',
 function bar(frac, color) { return h('div', { class: 'pbar' }, h('i', { style: `width:${Math.round(clamp(frac, 0, 1) * 100)}%;${color ? 'background:' + color : ''}` })); }
 
 /* ---------- لوحة تدريب اليوم (في الرئيسية) ---------- */
+function installBanner() {
+  const box = h('div', { id: 'install-banner' });
+  const draw = () => {
+    clear(box);
+    if (!Install.can() || Install.standalone() || (D().settings && D().settings.hideInstall)) return;
+    box.append(h('section', { class: 'panel', style: 'display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap' },
+      h('span', null, h('b', null, 'ثبّت فِكْر زُون'), h('small', { class: 'muted', style: 'display:block' }, 'أيقونة على شاشتك وتعمل بدون إنترنت')),
+      h('span', { class: 'actions', style: 'margin:0' }, h('button', { class: 'btn primary sm', id: 'btn-install-home', onClick: () => Install.prompt() }, 'تثبيت'),
+        h('button', { class: 'btn ghost sm', onClick: () => { D().settings.hideInstall = true; Store.save(); draw(); } }, 'لاحقاً'))));
+  };
+  draw(); Install.on(() => { if (box.isConnected) draw(); });
+  return box;
+}
 function dailyPanel() {
   const key = dayKey();
   const box = h('section', { class: 'panel trail-panel', id: 'daily-panel' });
@@ -1592,6 +1605,7 @@ Router.add('/home', (view) => {
         h('div', { class: 'chips' }, h('span', { class: 'chip' }, act), h('span', { class: 'chip' }, `المستوى ${lv.level}`), h('span', { class: 'chip' }, `${Streak.current()} يوم متتالٍ`)),
         h('div', { class: 'xp-line' }, bar(lv.frac), h('span', { class: 'small muted' }, `\u2066${lv.into} / ${lv.need}\u2069 XP`)))),
     h('div', { class: 'home-grid' },
+      installBanner(),
       dailyPanel(),
       h('div', { class: 'stack' },
         lastDef ? h('section', { class: 'panel' }, h('h3', null, 'متابعة'), h('p', { class: 'muted' }, `آخر جلسة: ${lastDef.name} · ${ago(last.ts)}`), h('div', { class: 'actions', style: 'margin-top:8px' }, h('button', { class: 'btn ghost sm', onClick: () => Play.open(lastDef.id) }, 'العب مجدداً'), h('a', { class: 'btn ghost sm', href: '#/games' }, 'لعبة أخرى'))) : h('section', { class: 'panel' }, h('h3', null, 'ابدأ من أي مكان'), h('p', { class: 'muted' }, 'كل الألعاب مفتوحة. اختر ما يجذبك من الخريطة أو المكتبة.'), h('a', { class: 'btn ghost sm', href: '#/games' }, 'فتح المكتبة')),
@@ -1789,6 +1803,7 @@ Router.add('/settings', (view) => {
     h('section', { class: 'panel' }, h('h3', null, 'المظهر'),
       h('div', { class: 'set-row' }, h('b', null, 'السمة'), segSet('theme', [['dark', 'داكن'], ['light', 'فاتح'], ['auto', 'تلقائي']])),
       tog('motion', 'الحركة والانتقالات', 'أوقفها إن كانت تزعجك')),
+    installPanel(),
     h('section', { class: 'panel' }, h('h3', null, 'الجلسات'),
       h('div', { class: 'set-row' }, h('span', null, h('b', null, 'مدة التدريب اليومي'), h('small', { class: 'muted' }, 'يُطبَّق على البرامج الجديدة')), segSet('minutes', [[15, '15'], [30, '30'], [45, '45'], [60, '60']])),
       tog('timer', 'إظهار الوقت أثناء اللعب'), tog('confirmQuit', 'تأكيد قبل الخروج من لعبة')),
@@ -1986,6 +2001,44 @@ function learnPage(view, id) {
     h('h1', { class: 'display' }, 'المرحلة التعليمية: ' + def.name), box));
 }
 Router.add('/learn/:id', (view, { id }) => learnPage(view, id), 'games');
+
+'use strict';
+/* ============ تثبيت التطبيق (PWA) ============ */
+const Install = (() => {
+  let ev = null;
+  const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const web = /^https?:$/.test(location.protocol);
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const listeners = [];
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); ev = e; listeners.forEach(f => f()); });
+  window.addEventListener('appinstalled', () => { ev = null; try { D().installed = true; Store.save(); } catch (e) { } listeners.forEach(f => f()); toast('تم تثبيت فِكْر زُون ✓'); });
+  return {
+    standalone, web, ios,
+    can: () => !!ev,
+    on: f => listeners.push(f),
+    async prompt() { if (!ev) return false; ev.prompt(); const r = await ev.userChoice; ev = null; listeners.forEach(f => f()); return r.outcome === 'accepted'; },
+    /* نص الإرشاد بحسب البيئة */
+    help() {
+      if (standalone()) return 'التطبيق مثبّت ويعمل الآن بشاشة كاملة.';
+      if (!web) return 'للتثبيت افتح فِكْر زُون عبر رابط الموقع (https) في المتصفح، فالتثبيت لا يعمل من ملف محفوظ على الجهاز.';
+      if (ios) return 'على iPhone/iPad: اضغط زر المشاركة ⬆︎ في Safari ثم «إضافة إلى الشاشة الرئيسية».';
+      return 'من قائمة المتصفح (⋮) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».';
+    },
+  };
+})();
+MV.Install = Install;
+
+function installPanel() {
+  const box = h('section', { class: 'panel', id: 'install-panel' });
+  function draw() {
+    mount(box, h('h3', null, 'تثبيت التطبيق'),
+      h('p', { class: 'muted' }, 'ثبّته كتطبيق على جهازك: أيقونة على الشاشة الرئيسية، شاشة كاملة، ويعمل بدون إنترنت.'),
+      h('p', { class: 'small' }, Install.help()),
+      !Install.standalone() && Install.can() ? h('div', { class: 'actions', style: 'margin:0' }, h('button', { class: 'btn primary', id: 'btn-install', onClick: () => Install.prompt() }, 'تثبيت فِكْر زُون')) : null);
+  }
+  draw(); Install.on(() => { if (box.isConnected) draw(); });
+  return box;
+}
 
 'use strict';
 /* ============ المنطق (1): سودوكو، نونوغرام، الألغاز الثنائية، شبكات المنطق ============ */

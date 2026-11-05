@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """يجمّع مصادر فِكْر زُون في ملف HTML واحد يعمل أوفلاين (الخطوط مضمّنة base64)."""
-import base64, glob, os, re, sys
+import base64, glob, hashlib, os, re, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, 'src')
@@ -42,10 +42,24 @@ def main():
     out = os.path.join(ROOT, 'dist', 'fikrzone.html')
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'w', encoding='utf-8') as f:
-        f.write(html)
-    # نسخة index.html في الجذر لنشرها عبر GitHub Pages
+        f.write(html)   # ملف واحد مستقل (يعمل بالنقر المزدوج بدون خادم)
+    # نسخة الويب القابلة للتثبيت (PWA): index.html + manifest + service worker
+    ver = hashlib.sha1(html.encode('utf-8')).hexdigest()[:10]
+    pwa_head = ('<link rel="manifest" href="manifest.webmanifest">\n'
+                '<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">\n'
+                '<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">\n'
+                '<meta name="mobile-web-app-capable" content="yes">\n'
+                '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+                '<meta name="apple-mobile-web-app-title" content="فِكْر زُون">\n'
+                '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n')
+    pwa_reg = ("<script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!/mvtest/.test(location.search))"
+               "{window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>\n")
+    web = html.replace('<style>', pwa_head + '<style>', 1).replace('</body>', pwa_reg + '</body>', 1)
     with open(os.path.join(ROOT, 'index.html'), 'w', encoding='utf-8') as f:
-        f.write(html)
+        f.write(web)
+    sw = open(os.path.join(ROOT, 'pwa', 'sw.template.js'), encoding='utf-8').read().replace('__VER__', ver)
+    with open(os.path.join(ROOT, 'sw.js'), 'w', encoding='utf-8') as f:
+        f.write(sw)
     print('OK', out, round(len(html) / 1024), 'KB', len(order), 'js files')
 
 

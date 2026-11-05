@@ -94,6 +94,7 @@ Router.add('/settings', (view) => {
     h('section', { class: 'panel' }, h('h3', null, 'المظهر'),
       h('div', { class: 'set-row' }, h('b', null, 'السمة'), segSet('theme', [['dark', 'داكن'], ['light', 'فاتح'], ['auto', 'تلقائي']])),
       tog('motion', 'الحركة والانتقالات', 'أوقفها إن كانت تزعجك')),
+    installPanel(),
     h('section', { class: 'panel' }, h('h3', null, 'الجلسات'),
       h('div', { class: 'set-row' }, h('span', null, h('b', null, 'مدة التدريب اليومي'), h('small', { class: 'muted' }, 'يُطبَّق على البرامج الجديدة')), segSet('minutes', [[15, '15'], [30, '30'], [45, '45'], [60, '60']])),
       tog('timer', 'إظهار الوقت أثناء اللعب'), tog('confirmQuit', 'تأكيد قبل الخروج من لعبة')),

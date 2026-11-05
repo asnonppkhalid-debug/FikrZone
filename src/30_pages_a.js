@@ -90,6 +90,19 @@ function pageHead(title, sub, right) { return h('div', { class: 'ph' }, h('div',
 function bar(frac, color) { return h('div', { class: 'pbar' }, h('i', { style: `width:${Math.round(clamp(frac, 0, 1) * 100)}%;${color ? 'background:' + color : ''}` })); }
 
 /* ---------- لوحة تدريب اليوم (في الرئيسية) ---------- */
+function installBanner() {
+  const box = h('div', { id: 'install-banner' });
+  const draw = () => {
+    clear(box);
+    if (!Install.can() || Install.standalone() || (D().settings && D().settings.hideInstall)) return;
+    box.append(h('section', { class: 'panel', style: 'display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap' },
+      h('span', null, h('b', null, 'ثبّت فِكْر زُون'), h('small', { class: 'muted', style: 'display:block' }, 'أيقونة على شاشتك وتعمل بدون إنترنت')),
+      h('span', { class: 'actions', style: 'margin:0' }, h('button', { class: 'btn primary sm', id: 'btn-install-home', onClick: () => Install.prompt() }, 'تثبيت'),
+        h('button', { class: 'btn ghost sm', onClick: () => { D().settings.hideInstall = true; Store.save(); draw(); } }, 'لاحقاً'))));
+  };
+  draw(); Install.on(() => { if (box.isConnected) draw(); });
+  return box;
+}
 function dailyPanel() {
   const key = dayKey();
   const box = h('section', { class: 'panel trail-panel', id: 'daily-panel' });
@@ -141,6 +154,7 @@ Router.add('/home', (view) => {
         h('div', { class: 'chips' }, h('span', { class: 'chip' }, act), h('span', { class: 'chip' }, `المستوى ${lv.level}`), h('span', { class: 'chip' }, `${Streak.current()} يوم متتالٍ`)),
         h('div', { class: 'xp-line' }, bar(lv.frac), h('span', { class: 'small muted' }, `\u2066${lv.into} / ${lv.need}\u2069 XP`)))),
     h('div', { class: 'home-grid' },
+      installBanner(),
       dailyPanel(),
       h('div', { class: 'stack' },
         lastDef ? h('section', { class: 'panel' }, h('h3', null, 'متابعة'), h('p', { class: 'muted' }, `آخر جلسة: ${lastDef.name} · ${ago(last.ts)}`), h('div', { class: 'actions', style: 'margin-top:8px' }, h('button', { class: 'btn ghost sm', onClick: () => Play.open(lastDef.id) }, 'العب مجدداً'), h('a', { class: 'btn ghost sm', href: '#/games' }, 'لعبة أخرى'))) : h('section', { class: 'panel' }, h('h3', null, 'ابدأ من أي مكان'), h('p', { class: 'muted' }, 'كل الألعاب مفتوحة. اختر ما يجذبك من الخريطة أو المكتبة.'), h('a', { class: 'btn ghost sm', href: '#/games' }, 'فتح المكتبة')),
