@@ -1,5 +1,5 @@
 /* Service Worker لفِكْر زُون — يعمل أوفلاين. الإصدار يتغيّر تلقائياً مع كل بناء */
-const VER = 'bab6960ac0';
+const VER = 'fa99a2950e';
 const CACHE = 'fikrzone-' + VER;
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-192.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png'];
 
